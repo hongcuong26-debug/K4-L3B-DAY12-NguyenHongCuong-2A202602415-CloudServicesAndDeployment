@@ -12,44 +12,44 @@
 
 | Mục | Nội dung |
 |---|---|
-| URL kiểm tra local | http://localhost:8000 |
-| Platform | Local Docker Compose fallback; cấu hình Render và Railway đã chuẩn bị |
+| Public URL | https://day12-agent-pmpw.onrender.com |
+| Platform | Render Blueprint |
 | Ngày kiểm tra | 2026-09-29 |
 
-Chưa tạo public cloud service vì phiên làm việc này không có quyền truy cập tài
-khoản Railway/Render. Bài dùng phương án local fallback, vì vậy CP5 bị giới hạn
-tối đa 9/15 điểm theo rubric. Không có URL hoặc output cloud nào được bịa.
+Render Blueprint `day12-agent-cuong` đã tạo:
+
+- Web service: `day12-agent`
+- Key Value/Redis: `day12-redis`
+- Branch: `main`
+- Commit deploy: `64d23e9` (`CP3`)
 
 ## Biến Môi Trường
 
-Các tên biến cần đặt trên cloud:
+Các tên biến đã đặt trên Render:
 
 - `AGENT_API_KEY`: secret do người dùng tự sinh và lưu trong dashboard.
-- `REDIS_URL`: lấy từ Redis add-on của platform.
-- `RATE_LIMIT_PER_MINUTE`: cấu hình giới hạn request.
-- `MONTHLY_BUDGET_USD`: cấu hình ngân sách tháng.
-- `LOG_LEVEL`: mức log.
+- `REDIS_URL`: lấy từ Render Key Value `day12-redis`.
+- `RATE_LIMIT_PER_MINUTE`: `10`.
+- `MONTHLY_BUDGET_USD`: `10.0`.
+- `LOG_LEVEL`: `INFO`.
 - `PORT`: do platform tự cấp.
 
 Tài liệu này không chứa giá trị của bất kỳ secret nào.
 
-## Kết Quả Chạy Thật Với Docker Compose
+## Kết Quả Kiểm Tra Cloud
 
 ```text
-agent: Up (healthy), 0.0.0.0:8000->8000/tcp
-redis: Up (healthy), 0.0.0.0:6379->6379/tcp
+curl -i https://day12-agent-pmpw.onrender.com/health
+HTTP/1.1 200 OK
+{"status":"ok","service":"day12-agent","version":"1.0.0"}
 
-GET /health
-200 {"status":"ok","service":"day12-agent","version":"1.0.0"}
+curl -i https://day12-agent-pmpw.onrender.com/ready
+HTTP/1.1 200 OK
+{"status":"ready","redis":true}
 
-GET /ready
-200 {"status":"ready","redis":true}
-
-POST /ask không có X-API-Key
-401 Unauthorized
-
-POST /ask có X-API-Key và X-User-Id: sv01
-200; user_id=sv01; history_length=0; answer_present=true
+POST https://day12-agent-pmpw.onrender.com/ask không có X-API-Key
+HTTP/1.1 401 Unauthorized
+{"detail":"invalid or missing API key"}
 ```
 
 Image production đã build thành công:
@@ -60,5 +60,5 @@ size_bytes=63855176
 user=app
 ```
 
-Ảnh endpoint thật nằm tại `screenshots/health.png`. Ảnh dashboard cloud chưa có
-vì chưa triển khai lên tài khoản cloud.
+Ảnh endpoint thật nằm tại `screenshots/health.png`. Ảnh dashboard Render cần
+lưu tại `screenshots/dashboard.png`.
