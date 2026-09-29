@@ -1,101 +1,64 @@
 # Thông Tin Deploy — Checkpoint 5
 
-> Điền file này sau khi deploy xong. `pytest tests/test_cp5.py` đọc file này
-> để tìm địa chỉ service của bạn và gọi thử.
->
-> **Chỉ ghi TÊN biến môi trường, tuyệt đối không dán giá trị API key vào đây.**
-> Repo này công khai — dán khóa vào là mất khóa.
-
 ## Thông Tin Học Viên
 
 | Mục | Nội dung |
-|-----|----------|
-| Họ và tên | (điền họ tên) |
-| Mã học viên | (điền mã học viên) |
-| Repo | (điền link repo K4-L3B-DAY12-HoVaTen-MSSV-CloudServicesAndDeployment) |
+|---|---|
+| Họ và tên | Nguyễn Hồng Cường |
+| Mã học viên | 2A202602415 |
+| Repo | https://github.com/hongcuong26-debug/K4-L3B-DAY12-NguyenHongCuong-2A202602415-CloudServicesAndDeployment |
 
 ## Service
 
 | Mục | Nội dung |
-|-----|----------|
-| Public URL | https://TODO-thay-bang-url-that.up.railway.app |
-| Platform | Railway / Render / Cloud Run — (điền platform bạn dùng) |
-| Ngày deploy | (điền ngày) |
+|---|---|
+| URL kiểm tra local | http://localhost:8000 |
+| Platform | Local Docker Compose fallback; cấu hình Render và Railway đã chuẩn bị |
+| Ngày kiểm tra | 2026-09-29 |
 
-## Biến Môi Trường Đã Set Trên Cloud
+Chưa tạo public cloud service vì phiên làm việc này không có quyền truy cập tài
+khoản Railway/Render. Bài dùng phương án local fallback, vì vậy CP5 bị giới hạn
+tối đa 9/15 điểm theo rubric. Không có URL hoặc output cloud nào được bịa.
 
-Ghi tên biến và **nguồn giá trị**, không ghi giá trị:
+## Biến Môi Trường
 
-| Biến | Đã set | Ghi chú |
-|------|--------|---------|
-| `PORT` | ✅ | platform tự gán |
-| `AGENT_API_KEY` | ✅ | đặt trong dashboard, không nằm trong repo |
-| `REDIS_URL` | ✅ | (điền: Redis add-on của platform / Upstash / ...) |
-| `RATE_LIMIT_PER_MINUTE` | ✅ | 10 |
-| `MONTHLY_BUDGET_USD` | ✅ | 10.0 |
-| `LOG_LEVEL` | ✅ | INFO |
+Các tên biến cần đặt trên cloud:
 
-## Lệnh Kiểm Tra
+- `AGENT_API_KEY`: secret do người dùng tự sinh và lưu trong dashboard.
+- `REDIS_URL`: lấy từ Redis add-on của platform.
+- `RATE_LIMIT_PER_MINUTE`: cấu hình giới hạn request.
+- `MONTHLY_BUDGET_USD`: cấu hình ngân sách tháng.
+- `LOG_LEVEL`: mức log.
+- `PORT`: do platform tự cấp.
 
-Thay `<URL>` bằng Public URL ở trên:
+Tài liệu này không chứa giá trị của bất kỳ secret nào.
 
-```bash
-# 1. Liveness — mong đợi 200 {"status":"ok"}
-curl -i <URL>/health
+## Kết Quả Chạy Thật Với Docker Compose
 
-# 2. Readiness — mong đợi 200 {"status":"ready"} (đã nối được Redis)
-curl -i <URL>/ready
+```text
+agent: Up (healthy), 0.0.0.0:8000->8000/tcp
+redis: Up (healthy), 0.0.0.0:6379->6379/tcp
 
-# 3. Không có API key — mong đợi 401
-curl -i -X POST <URL>/ask \
-  -H "Content-Type: application/json" \
-  -d '{"question":"Hello"}'
+GET /health
+200 {"status":"ok","service":"day12-agent","version":"1.0.0"}
 
-# 4. Có API key — mong đợi 200 kèm câu trả lời
-curl -i -X POST <URL>/ask \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: $AGENT_API_KEY" \
-  -H "X-User-Id: sv-test" \
-  -d '{"question":"Deploy là gì?"}'
+GET /ready
+200 {"status":"ready","redis":true}
 
-# 5. Rate limit — gọi 15 lần, những lần cuối phải trả 429
-for i in $(seq 1 15); do
-  curl -s -o /dev/null -w "%{http_code} " -X POST <URL>/ask \
-    -H "Content-Type: application/json" \
-    -H "X-API-Key: $AGENT_API_KEY" \
-    -H "X-User-Id: sv-test" \
-    -d '{"question":"test"}'
-done; echo
+POST /ask không có X-API-Key
+401 Unauthorized
+
+POST /ask có X-API-Key và X-User-Id: sv01
+200; user_id=sv01; history_length=0; answer_present=true
 ```
 
-## Kết Quả Chạy Thật
+Image production đã build thành công:
 
-Dán output của các lệnh trên vào đây:
-
+```text
+day12-agent:prod
+size_bytes=63855176
+user=app
 ```
-(điền output)
-```
 
-## Ảnh Chụp Màn Hình
-
-Đặt ảnh trong thư mục `screenshots/`:
-
-- `screenshots/dashboard.png` — trang quản lý service trên platform
-- `screenshots/health.png` — kết quả gọi `/health` từ trình duyệt hoặc curl
-
----
-
-## Nếu Dùng Phương Án Dự Phòng
-
-Không đăng ký được tài khoản cloud? Vẫn nộp được bài, nhưng CP5 tối đa 60% điểm:
-
-1. Đặt `LOCAL_FALLBACK=true` trong `.env`
-2. Chạy `docker compose up -d` rồi kiểm tra `docker compose ps`
-3. Chụp màn hình vào `screenshots/`
-4. Chạy `pytest tests/test_cp5.py -v` — bộ test sẽ tự chuyển sang kiểm tra
-   `http://localhost:8000`
-5. Ghi rõ lý do không deploy được vào phần dưới đây:
-
-```
-(điền lý do nếu dùng phương án dự phòng, ngược lại xóa mục này)
-```
+Ảnh endpoint thật nằm tại `screenshots/health.png`. Ảnh dashboard cloud chưa có
+vì chưa triển khai lên tài khoản cloud.
